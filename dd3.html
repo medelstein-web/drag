@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drag and Drop Sentence Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .word {
+      display: inline-block;
+      padding: 10px 15px;
+      margin: 5px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      background-color: #f0f0f0;
+      cursor: grab;
+      font-size: 18px;
+    }
+    .dropzone {
+      display: inline-block;
+      margin: 10px;
+      padding: 15px;
+      min-width: 60px;
+      min-height: 40px;
+      border: 2px dashed #bbb;
+      border-radius: 5px;
+      background-color: #fafafa;
+    }
+    .dropzone.active {
+      border-color: green;
+    }
+    .sentence {
+      margin-top: 20px;
+    }
+    #checkBtn, #generateBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    #teacherSection {
+      border: 2px dashed #ccc;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    #teacherSection input[type="color"] {
+      margin-left: 5px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Customizable Drag and Drop Sentence Game</h1>
+
+  <!-- Teacher Input Section -->
+  <div id="teacherSection">
+    <h3>Teacher Section (Hidden from Students)</h3>
+    <p>Enter the sentence (comma-separated) and select colors for each word:</p>
+    <textarea id="sentenceInput" rows="3" placeholder="Enter the sentence here, e.g., The, dog, jumps, over, the, lazy"></textarea>
+    <div id="colorInputs"></div>
+    <button id="generateBtn">Generate Game</button>
+  </div>
+
+  <!-- Game Area -->
+  <div id="wordsContainer"></div>
+  <div id="dropzoneContainer" class="sentence"></div>
+  <button id="checkBtn" style="display:none;">Check Sentence</button>
+  <p id="result"></p>
+
+  <script>
+    const teacherSection = document.getElementById('teacherSection');
+    const sentenceInput = document.getElementById('sentenceInput');
+    const colorInputs = document.getElementById('colorInputs');
+    const wordsContainer = document.getElementById('wordsContainer');
+    const dropzoneContainer = document.getElementById('dropzoneContainer');
+    const generateBtn = document.getElementById('generateBtn');
+    const checkBtn = document.getElementById('checkBtn');
+    const result = document.getElementById('result');
+
+    let correctSentence = [];
+
+    // Generate color inputs dynamically when the teacher enters a sentence
+    sentenceInput.addEventListener('input', () => {
+      const words = sentenceInput.value.split(',').map(word => word.trim());
+      colorInputs.innerHTML = ''; // Clear previous color inputs
+
+      words.forEach((word, index) => {
+        const label = document.createElement('label');
+        label.textContent = word;
+        const colorPicker = document.createElement('input');
+        colorPicker.type = 'color';
+        colorPicker.id = `color-${index}`;
+        label.appendChild(colorPicker);
+        colorInputs.appendChild(label);
+        colorInputs.appendChild(document.createElement('br'));
+      });
+    });
+
+    // Generate the game
+    generateBtn.addEventListener('click', () => {
+      const words = sentenceInput.value.split(',').map(word => word.trim());
+      correctSentence = [...words]; // Save the correct sentence order
+
+      if (words.length === 0) {
+        alert("Please enter a sentence!");
+        return;
+      }
+
+      // Assign colors based on teacher inputs
+      const wordColors = words.map((_, index) => {
+        const colorInput = document.getElementById(`color-${index}`);
+        return colorInput ? colorInput.value : '#000'; // Default to black
+      });
+
+      // Shuffle the words for the game
+      const shuffledWords = words
+        .map((word, index) => ({ word, color: wordColors[index] }))
+        .sort(() => Math.random() - 0.5);
+
+      // Hide the teacher section
+      teacherSection.style.display = 'none';
+
+      // Clear previous game and generate new one
+      wordsContainer.innerHTML = '';
+      dropzoneContainer.innerHTML = '';
+      result.textContent = '';
+      checkBtn.style.display = 'inline-block';
+
+      // Create draggable words
+      shuffledWords.forEach(({ word, color }) => {
+        const wordDiv = document.createElement('div');
+        wordDiv.className = 'word';
+        wordDiv.draggable = true;
+        wordDiv.dataset.word = word;
+        wordDiv.textContent = word;
+        wordDiv.style.color = color;
+        wordsContainer.appendChild(wordDiv);
+      });
+
+      // Create drop zones
+      correctSentence.forEach(() => {
+        const dropzone = document.createElement('div');
+        dropzone.className = 'dropzone';
+        dropzoneContainer.appendChild(dropzone);
+      });
+
+      initializeDragAndDrop();
+    });
+
+    function initializeDragAndDrop() {
+      let draggedWord = null;
+
+      document.querySelectorAll('.word').forEach(word => {
+        word.addEventListener('dragstart', () => {
+          draggedWord = word;
+        });
+        word.addEventListener('dragend', () => {
+          draggedWord = null;
+        });
+      });
+
+      document.querySelectorAll('.dropzone').forEach(zone => {
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          zone.classList.add('active');
+        });
+
+        zone.addEventListener('dragleave', () => {
+          zone.classList.remove('active');
+        });
+
+        zone.addEventListener('drop', () => {
+          if (draggedWord) {
+            zone.innerHTML = '';
+            zone.appendChild(draggedWord);
+            zone.classList.remove('active');
+          }
+        });
+      });
+
+      checkBtn.addEventListener('click', () => {
+        const sentence = Array.from(document.querySelectorAll('.dropzone')).map(zone =>
+          zone.children[0] ? zone.children[0].dataset.word : ''
+        );
+
+        if (JSON.stringify(sentence) === JSON.stringify(correctSentence)) {
+          result.textContent = 'Correct! 🎉';
+          result.style.color = 'green';
+        } else {
+          result.textContent = 'Try again!';
+          result.style.color = 'red';
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+
+
